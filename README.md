@@ -1,2 +1,2 @@
 # omem
-Fast, lightweight header-only generic memory pool and allocator
+Lightweight header-only generic memory pool and allocator
