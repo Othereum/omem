@@ -8,123 +8,38 @@ int main(int argc, char* argv[])
 	return RUN_ALL_TESTS();
 }
 
-using namespace omem;
+template <class T, class Al>
+using Rebind = typename std::allocator_traits<Al>::template rebind_alloc<T>;
 
-TEST(MemoryPool, Single)
+template <class T, class Al>
+static T* allocate(size_t cnt)
 {
-	Deallocate(Allocate<int>(1), 1);
-	Deallocate(Allocate<char>(1), 1);
+	return std::allocator_traits<Rebind<T, Al>>::allocate(Rebind<T, Al>{}, cnt);
 }
 
-TEST(MemoryPool, Array)
+template <class Al>
+static void Benchmark()
 {
-	Deallocate(Allocate<int>(10), 10);
-	Deallocate(Allocate<char>(10), 10);
-}
-
-TEST(MemoryPool, Repeat)
-{
-	for (auto i=0; i<10; ++i)
-		Deallocate(Allocate<int>(1), 1);
-}
-
-TEST(MemoryPool, RepeatArr)
-{
-	for (auto i=0; i<10; ++i)
-		Deallocate(Allocate<int>(10), 10);
-}
-
-TEST(MemoryPool, Arr2)
-{
-	auto arr = Allocate<int*>(10);
-	for (auto i=0; i<10; ++i)
-		arr[i] = Allocate<int>(10);
-	for (auto i=0; i<10; ++i)
-		Deallocate(arr[i], 10);
-	Deallocate(arr, 10);
-}
-
-constexpr size_t kOne = 1;
-constexpr size_t kCount = 3000000;
-constexpr size_t kLog2 = detail::LogCeil(kCount, 2);
-
-TEST(MemoryPool, Many)
-{
-	Deallocate(Allocate<int>(kCount), kCount);
-}
-
-TEST(MemoryPool, Increase)
-{
-	auto arr = Allocate<int*>(kLog2);
-	for (size_t i = 0; i < kLog2; ++i)
-		arr[i] = Allocate<int>(kOne << i);
-	for (size_t i = 0; i < kLog2; ++i)
-		Deallocate(arr[i], kOne << i);
-	Deallocate(arr, kLog2);
-}
-
-TEST(MemoryPool, IncreaseDealloc)
-{
-	for (size_t i = 0; i < kLog2; ++i)
-		Deallocate(Allocate<int>(kOne << i), kOne << i);
-}
-
-struct TestStruct
-{
-	TestStruct() {}
-	TestStruct(TestStruct&&) {}
-	float data[9];
-};
-
-TEST(MemoryPool, ManyStruct)
-{
-	Deallocate(Allocate<TestStruct>(kCount), kCount);
-}
-
-TEST(MemoryPool, IncreaseStruct)
-{
-	auto arr = Allocate<TestStruct*>(kLog2);
-	for (size_t i = 0; i < kLog2; ++i)
-		arr[i] = Allocate<TestStruct>(kOne << i);
-	for (size_t i = 0; i < kLog2; ++i)
-		Deallocate(arr[i], kOne << i);
-	Deallocate(arr, kLog2);
-}
-
-TEST(MemoryPool, IncreaseDeallocStruct)
-{
-	for (size_t i = 0; i < kLog2; ++i)
-		Deallocate(Allocate<TestStruct>(kOne << i), kOne << i);
-}
-
-TEST(MemoryPool, VectorAllocator)
-{
-	std::vector<TestStruct, Allocator<TestStruct>> vec;
-	for (size_t i=0; i<kCount; ++i) vec.emplace_back();
-}
-
-TEST(MemoryPool, HugeKB)
-{
-	struct Huge
-	{
-		Huge() {}
-		Huge(Huge&&) {}
-		char data[1000];
+	auto deallocate = [&]<class T>(T* ptr, size_t cnt) {
+		std::allocator_traits<Rebind<T, Al>>::deallocate(Rebind<T, Al>{}, ptr, cnt);
 	};
 
-	std::vector<Huge, Allocator<Huge>> vec;
-	for (size_t i=0; i<100000; ++i) vec.emplace_back();
+	auto arr = new double*[10];
+	for (auto i=0; i<10; ++i) arr[i] = allocate<double, Al>(1);
+
+	for (auto i=0; i<10000000; ++i)
+		deallocate(allocate<double, Al>(1), 1);
+	
+	for (auto i=0; i<10; ++i) deallocate(arr[i], 1);
+	delete[] arr;
 }
 
-TEST(MemoryPool, HugeMB)
+TEST(omem, omem)
 {
-	struct Huge
-	{
-		Huge() {}
-		Huge(Huge&&) {}
-		char data[1000000];
-	};
+	Benchmark<omem::Allocator<void>>();
+}
 
-	std::vector<Huge, Allocator<Huge>> vec;
-	for (size_t i=0; i<100; ++i) vec.emplace_back();
+TEST(omem, cppstd)
+{
+	Benchmark<std::allocator<void>>();
 }
