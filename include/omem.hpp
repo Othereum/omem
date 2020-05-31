@@ -116,12 +116,12 @@ namespace omem
 				}
 				
 				const auto blocks = CountBlocks(sizeof T * count);
-				total_blocks_ -= blocks;
-				
 				it->remaining += blocks;
 				assert(it->remaining <= it->blocks.size());
+				
 				if (it->remaining >= it->blocks.size())
 				{
+					total_blocks_ -= it->blocks.size();
 					containers_.erase(it);
 					return;
 				}

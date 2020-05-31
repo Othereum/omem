@@ -24,14 +24,15 @@ static void Benchmark()
 		std::allocator_traits<Rebind<T, Al>>::deallocate(Rebind<T, Al>{}, ptr, cnt);
 	};
 
-	auto arr = new double*[10];
-	for (auto i=0; i<10; ++i) arr[i] = allocate<double, Al>(1);
+	constexpr auto cnt = 5;
 
+	double* arr[cnt];
+	for (auto& p : arr) p = allocate<double, Al>(1);
+	
 	for (auto i=0; i<10000000; ++i)
 		deallocate(allocate<double, Al>(1), 1);
-	
-	for (auto i=0; i<10; ++i) deallocate(arr[i], 1);
-	delete[] arr;
+
+	for (auto* p : arr) deallocate(p, 1);
 }
 
 TEST(omem, omem)
