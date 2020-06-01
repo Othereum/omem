@@ -7,6 +7,7 @@ namespace omem::detail
 	static void PrintPoolInfo(const PoolInfo& info)
 	{
 		std::cout << "[omem] Memory pool with " << info.count << ' ' << info.size << "-byte blocks on thread " << std::this_thread::get_id() << '\n';
+		std::cout << "[omem]  Leaked: " << info.cur << " blocks\n";
 		std::cout << "[omem]  Peak usage: " << info.peak << " blocks\n";
 		std::cout << "[omem]  Block fault: " << info.fault << " times\n";
 	}
