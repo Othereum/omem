@@ -1,12 +1,11 @@
 #include "omem.hpp"
 #include <iostream>
-#include <thread>
 
 namespace omem::detail
 {
 	static void PrintPoolInfo(const PoolInfo& info)
 	{
-		std::cout << "[omem] Memory pool with " << info.count << ' ' << info.size << "-byte blocks on thread " << std::this_thread::get_id() << '\n';
+		std::cout << "[omem] Memory pool with " << info.count << ' ' << info.size << "-byte blocks\n";
 		std::cout << "[omem]  Leaked: " << info.cur << " blocks\n";
 		std::cout << "[omem]  Peak usage: " << info.peak << " blocks\n";
 		std::cout << "[omem]  Block fault: " << info.fault << " times\n";
@@ -31,6 +30,9 @@ namespace omem::detail
 
 	void* MemoryPool::Alloc()
 	{
+#if OMEM_THREADSAFE
+		std::lock_guard<std::mutex> lock{mutex_};
+#endif
 		info_.peak = Max(info_.peak, ++info_.cur);
 		if (next_)
 		{
@@ -44,8 +46,11 @@ namespace omem::detail
 
 	void MemoryPool::Free(void* const ptr) noexcept
 	{
+#if OMEM_THREADSAFE
+		std::lock_guard<std::mutex> lock{mutex_};
+#endif
 		auto* const block = static_cast<Block*>(ptr);
-		const auto idx = static_cast<size_t>(block - blocks_);
+		const auto idx = static_cast<size_t>(reinterpret_cast<char*>(block) - blocks_) / info_.size;
 		if (0 <= idx && idx < info_.count)
 		{
 			auto* next = next_;

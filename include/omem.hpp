@@ -1,6 +1,10 @@
 #pragma once
 #include <functional>
 
+#if OMEM_THREADSAFE
+#include <mutex>
+#endif
+
 namespace omem
 {
 	struct PoolInfo
@@ -64,6 +68,9 @@ namespace omem
 			struct Block { Block* next; } *next_;
 			void* const blocks_;
 			PoolInfo info_;
+#if OMEM_THREADSAFE
+			std::mutex mutex_;
+#endif
 		};
 
 		template <size_t Size>
@@ -71,7 +78,7 @@ namespace omem
 		{
 			static MemoryPool& Get() noexcept
 			{
-				thread_local MemoryPool pool{Size, Max(OMEM_POOL_SIZE/Size, 1)};
+				static MemoryPool pool{Size, Max(OMEM_POOL_SIZE/Size, 1)};
 				return pool;
 			}
 		};

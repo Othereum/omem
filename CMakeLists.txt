@@ -8,6 +8,9 @@ target_include_directories(omem PUBLIC "include")
 set(OMEM_POOL_SIZE 1048576 CACHE STRING "Pool size in bytes")
 target_compile_definitions(omem PUBLIC OMEM_POOL_SIZE=${OMEM_POOL_SIZE})
 
+set(OMEM_THREADSAFE 0 CACHE STRING "")
+target_compile_definitions(omem PUBLIC OMEM_THREADSAFE=${OMEM_THREADSAFE})
+
 set(OMEM_BUILD_TESTS FALSE CACHE BOOL "Whether to build a test")
 if(OMEM_BUILD_TESTS)
 	file(GLOB_RECURSE TEST_SRC_FILES "tests/*.cpp")
