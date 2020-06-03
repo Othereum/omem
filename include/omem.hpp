@@ -184,6 +184,16 @@ namespace omem
 		}
 	};
 
+	template <class T>
+	class Deleter<T[]>
+	{
+	public:
+		void operator()(T* p) const noexcept
+		{
+			delete[] p;
+		}
+	};
+
 	/**
 	 * \brief Register function to be called when memory pool is destroyed. Print info to stdout by default.
 	 * \param on_pool_dest function to be called
