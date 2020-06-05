@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <vector>
 
 #if OMEM_THREADSAFE
 #include <mutex>
@@ -58,6 +59,8 @@ namespace omem
 			
 			[[nodiscard]] void* Alloc();
 			void Free(void* ptr) noexcept;
+
+			[[nodiscard]] const PoolInfo& GetInfo() const noexcept { return info_; }
 
 			MemoryPool(const MemoryPool&) = delete;
 			MemoryPool(MemoryPool&&) = delete;
@@ -209,4 +212,6 @@ namespace omem
 	 * \note All exceptions thrown from on_pool_dest are swallowed silently.
 	 */
 	void SetOnPoolDest(std::function<void(const PoolInfo&)>&& on_pool_dest) noexcept;
+
+	const std::vector<std::reference_wrapper<detail::MemoryPool>>& GetPools() noexcept;
 }

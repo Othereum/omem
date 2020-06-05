@@ -12,6 +12,7 @@ namespace omem::detail
 	}
 	
 	static std::function<void(const PoolInfo&)> on_pool_dest = &PrintPoolInfo;
+	static std::vector<std::reference_wrapper<MemoryPool>> pools;
 
 	MemoryPool::MemoryPool(const size_t size, const size_t count)
 		:blocks_{operator new(size * count)}, info_{size, count}
@@ -20,6 +21,7 @@ namespace omem::detail
 		auto* next = next_ = static_cast<Block*>(blocks_);
 		for (size_t i=1; i<count; ++i) next = next->next = reinterpret_cast<Block*>(it += size);
 		next->next = nullptr;
+		pools.emplace_back(*this);
 	}
 
 	MemoryPool::~MemoryPool()
@@ -75,5 +77,10 @@ namespace omem
 	void SetOnPoolDest(std::function<void(const PoolInfo&)>&& on_pool_dest) noexcept
 	{
 		detail::on_pool_dest = std::move(on_pool_dest);
+	}
+
+	const std::vector<std::reference_wrapper<detail::MemoryPool>>& GetPools() noexcept
+	{
+		return detail::pools;
 	}
 }
