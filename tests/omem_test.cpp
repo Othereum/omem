@@ -18,7 +18,23 @@ static void Benchmark(Al al)
 
 TEST(omem, omem)
 {
-	Benchmark(omem::Allocator<double>{});
+	class Allocator
+	{
+	public:
+		using value_type = double;
+		
+		double* allocate(size_t)
+		{
+			return static_cast<double*>(omem::MemoryPool::Get(sizeof(double)).Alloc());
+		}
+
+		void deallocate(double* p, size_t)
+		{
+			omem::MemoryPool::Get(sizeof(double)).Free(p);
+		}
+	};
+	
+	Benchmark(Allocator{});
 }
 
 TEST(omem, cppstd)
