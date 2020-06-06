@@ -36,12 +36,15 @@ namespace omem
 
 	MemoryPool& MemoryPool::Get(size_t size)
 	{
+		constexpr size_t pool_size = OMEM_POOL_SIZE;
 		constexpr auto min_log = LogCeil(sizeof(void*), 2);
-		const auto real_size = size_t(1) << std::max(LogCeil(size, 2), min_log);
+		constexpr auto max_log = LogCeil(pool_size + 1, 2);
+		const auto log = std::clamp(LogCeil(size, 2), min_log, max_log);
+		const auto real_size = size_t(1) << log;
 #if OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
 #endif
-		return pools.try_emplace(real_size, real_size, OMEM_POOL_SIZE/real_size).first->second;
+		return pools.try_emplace(log, real_size, pool_size/real_size).first->second;
 	}
 
 	MemoryPool::MemoryPool(const size_t size, const size_t count)
