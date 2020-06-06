@@ -44,18 +44,51 @@ namespace omem
 		size_t fault = 0;
 	};
 	
-	class OMAPI MemoryPool
+	class MemoryPool
 	{
 	public:
-		static MemoryPool& Get(size_t size);
+		OMAPI static MemoryPool& Get(size_t size);
 		
 		MemoryPool(size_t size, size_t count);
 		MemoryPool(MemoryPool&& r) noexcept;
 		~MemoryPool();
 		
-		[[nodiscard]] void* Alloc();
-		void Free(void* ptr) noexcept;
+		[[nodiscard]] void* Alloc()
+		{
+#if OMEM_THREADSAFE
+			std::lock_guard<std::mutex> lock{mutex_};
+#endif
+			if (++info_.cur > info_.peak) info_.peak = info_.cur;
+			if (next_)
+			{
+				auto* ret = next_;
+				next_ = next_->next;
+				return ret;
+			}
+			++info_.fault;
+			return operator new(info_.size);
+		}
 
+		void Free(void* ptr) noexcept
+		{
+#if OMEM_THREADSAFE
+			std::lock_guard<std::mutex> lock{mutex_};
+#endif
+			auto* const block = static_cast<Block*>(ptr);
+			const auto idx = static_cast<size_t>(reinterpret_cast<char*>(block) - blocks_) / info_.size;
+			if (0 <= idx && idx < info_.count)
+			{
+				auto* next = next_;
+				next_ = block;
+				block->next = next;
+			}
+			else
+			{
+				operator delete(ptr);
+			}
+			--info_.cur;
+		}
+		
 		[[nodiscard]] const PoolInfo& GetInfo() const noexcept { return info_; }
 
 		MemoryPool(const MemoryPool&) = delete;
@@ -70,103 +103,6 @@ namespace omem
 #if OMEM_THREADSAFE
 		std::mutex mutex_;
 #endif
-	};
-
-	/**
-	 * \brief Allocate memory from pool
-	 * \note If no memory left in the pool, allocates new memory
-	 * \note Must be returned to pool by Free(p) with SAME SIZE
-	 */
-	[[nodiscard]] inline void* Alloc(size_t size)
-	{
-		return MemoryPool::Get(size).Alloc();
-	}
-
-	/**
-	 * \brief Return memory to pool
-	 * \param p Memory to be returned to pool
-	 * \param size MUST BE SAME SIZE as allocated by Alloc(size)
-	 */
-	inline void Free(void* p, size_t size) noexcept
-	{
-		MemoryPool::Get(size).Free(p);
-	}
-
-	/**
-	 * \brief Allocate memory from pool and create object
-	 * \tparam T Object type to be created
-	 * \param args Arguments to be passed to constructor of T
-	 * \return Created object
-	 * \note MUST BE DELETED by Delete<T>(p) with SAME TYPE. DO NOT CAST POINTER BEFORE DELETE
-	 */
-	template <class T, class... Args>
-	[[nodiscard]] T* New(Args&&... args)
-	{
-		return new (Alloc(sizeof T)) T{std::forward<Args>(args)...};
-	}
-
-	/**
-	 * \brief Destroy object pointed by p and return memory to pool
-	 * \tparam T MUST BE SAME TYPE as allocated by New().
-	 * \param p Object to be deleted
-	 */
-	template <class T>
-	void Delete(T* p) noexcept
-	{
-		p->~T();
-		Free(p, sizeof T);
-	}
-	
-	template <class T>
-	class Allocator
-	{
-	public:
-		using value_type = T;
-		
-		constexpr Allocator() noexcept = default;
-
-		template <class Y>
-		constexpr Allocator(const Allocator<Y>&) noexcept {}
-
-		template <class Y>
-		constexpr bool operator==(const Allocator<Y>&) const noexcept { return true; }
-
-		[[nodiscard]] T* allocate(size_t n) const
-		{
-			return static_cast<T*>(n == 1 ? GetPool().Alloc() : operator new(n * sizeof T));
-		}
-
-		void deallocate(T* p, size_t n) const noexcept
-		{
-			if (n == 1) GetPool().Free(p);
-			else operator delete(p, n * sizeof T);
-		}
-
-	private:
-		[[nodiscard]] static MemoryPool& GetPool() noexcept
-		{
-			return MemoryPool::Get(sizeof T);
-		}
-	};
-
-	template <class T>
-	class Deleter
-	{
-	public:
-		void operator()(T* p) const noexcept
-		{
-			Delete(p);
-		}
-	};
-
-	template <class T>
-	class Deleter<T[]>
-	{
-	public:
-		void operator()(T* p) const noexcept
-		{
-			delete[] p;
-		}
 	};
 
 	/**

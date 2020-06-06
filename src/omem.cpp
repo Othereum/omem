@@ -36,7 +36,8 @@ namespace omem
 
 	MemoryPool& MemoryPool::Get(size_t size)
 	{
-		const auto real_size = size_t(1) << std::max(LogCeil(size, 2), LogCeil(sizeof(void*), 2));
+		constexpr auto min_log = LogCeil(sizeof(void*), 2);
+		const auto real_size = size_t(1) << std::max(LogCeil(size, 2), min_log);
 #if OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
 #endif
@@ -67,42 +68,6 @@ namespace omem
 			operator delete(blocks_, info_.size * info_.count);
 			try { on_pool_dest(info_); } catch (...) {}
 		}
-	}
-
-	void* MemoryPool::Alloc()
-	{
-#if OMEM_THREADSAFE
-		std::lock_guard<std::mutex> lock{mutex_};
-#endif
-		info_.peak = std::max(info_.peak, ++info_.cur);
-		if (next_)
-		{
-			auto* ret = next_;
-			next_ = next_->next;
-			return ret;
-		}
-		++info_.fault;
-		return operator new(info_.size);
-	}
-
-	void MemoryPool::Free(void* const ptr) noexcept
-	{
-#if OMEM_THREADSAFE
-		std::lock_guard<std::mutex> lock{mutex_};
-#endif
-		auto* const block = static_cast<Block*>(ptr);
-		const auto idx = static_cast<size_t>(reinterpret_cast<char*>(block) - blocks_) / info_.size;
-		if (0 <= idx && idx < info_.count)
-		{
-			auto* next = next_;
-			next_ = block;
-			block->next = next;
-		}
-		else
-		{
-			operator delete(ptr);
-		}
-		--info_.cur;
 	}
 
 	void SetOnPoolDest(const std::function<void(const PoolInfo&)>& on_pool_dest)
