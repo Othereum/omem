@@ -105,6 +105,18 @@ namespace omem
 #endif
 	};
 
+	[[nodiscard]] inline void* Alloc(size_t size)
+	{
+		if (size <= OMEM_POOL_SIZE) return MemoryPool::Get(size).Alloc();
+		return operator new(size);
+	}
+
+	inline void Free(void* p, size_t size) noexcept
+	{
+		if (size <= OMEM_POOL_SIZE) MemoryPool::Get(size).Free(p);
+		else operator delete(p, size);
+	}
+
 	/**
 	 * \brief Register function to be called when memory pool is destroyed. Print info to stdout by default.
 	 * \param on_pool_dest function to be called
