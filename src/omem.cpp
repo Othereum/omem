@@ -36,9 +36,9 @@ namespace omem
 
 	MemoryPool& MemoryPool::Get(size_t size)
 	{
-		constexpr size_t pool_size = OMEM_POOL_SIZE;
+		constexpr auto pool_size = size_t(1) << LogCeil(OMEM_POOL_SIZE, 2);
 		constexpr auto min_log = LogCeil(sizeof(void*), 2);
-		constexpr auto max_log = LogCeil(pool_size + 1, 2);
+		constexpr auto max_log = LogCeil(pool_size, 2) + 1;
 		const auto log = std::clamp(LogCeil(size, 2), min_log, max_log);
 		const auto real_size = size_t(1) << log;
 #if OMEM_THREADSAFE
