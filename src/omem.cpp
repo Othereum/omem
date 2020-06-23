@@ -68,7 +68,7 @@ namespace omem
 	{
 		if (blocks_)
 		{
-			operator delete(blocks_, info_.size * info_.count);
+			operator delete(blocks_);
 			try { on_pool_dest(info_); } catch (...) {}
 		}
 	}

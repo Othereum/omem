@@ -1,4 +1,5 @@
 #pragma once
+#include <new>
 #include <functional>
 #include <unordered_map>
 
@@ -75,7 +76,7 @@ namespace omem
 			std::lock_guard<std::mutex> lock{mutex_};
 #endif
 			auto* const block = static_cast<Block*>(ptr);
-			const auto idx = static_cast<size_t>(reinterpret_cast<char*>(block) - blocks_) / info_.size;
+			const auto idx = static_cast<size_t>(static_cast<char*>(ptr) - static_cast<char*>(blocks_)) / info_.size;
 			if (0 <= idx && idx < info_.count)
 			{
 				auto* next = next_;
@@ -114,7 +115,7 @@ namespace omem
 	inline void Free(void* p, size_t size) noexcept
 	{
 		if (size <= OMEM_POOL_SIZE) MemoryPool::Get(size).Free(p);
-		else operator delete(p, size);
+		else operator delete(p);
 	}
 
 	/**
