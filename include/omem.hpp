@@ -76,8 +76,8 @@ namespace omem
 			std::lock_guard<std::mutex> lock{mutex_};
 #endif
 			auto* const block = static_cast<Block*>(ptr);
-			const auto idx = static_cast<size_t>(static_cast<char*>(ptr) - static_cast<char*>(blocks_)) / info_.size;
-			if (idx < info_.count)
+			const auto diff = static_cast<char*>(ptr) - static_cast<char*>(blocks_);
+			if (static_cast<size_t>(diff) < info_.count * info_.size)
 			{
 				auto* next = next_;
 				next_ = block;
