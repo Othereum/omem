@@ -73,14 +73,14 @@ namespace omem
 		}
 	}
 
-	void SetOnPoolDest(const std::function<void(const PoolInfo&)>& on_pool_dest)
+	void SetOnPoolDest(const std::function<void(const PoolInfo&)>& callback)
 	{
-		omem::on_pool_dest = on_pool_dest;
+		on_pool_dest = callback;
 	}
 
-	void SetOnPoolDest(std::function<void(const PoolInfo&)>&& on_pool_dest) noexcept
+	void SetOnPoolDest(std::function<void(const PoolInfo&)>&& callback) noexcept
 	{
-		omem::on_pool_dest = std::move(on_pool_dest);
+		on_pool_dest = std::move(callback);
 	}
 
 	const std::unordered_map<size_t, MemoryPool>& GetPools() noexcept
