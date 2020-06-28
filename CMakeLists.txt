@@ -14,6 +14,10 @@ set_target_properties(omem PROPERTIES CXX_STANDARD 17)
 target_include_directories(omem PUBLIC "include")
 target_compile_definitions(omem INTERFACE OMEM_BUILD=0 PRIVATE OMEM_BUILD=1)
 
+target_compile_options(omem PRIVATE
+	$<IF:$<CXX_COMPILER_ID:MSVC>,/W4 /WX /wd4251,-Wall -Wextra -pedantic -Werror>
+)
+
 set(OMEM_POOL_SIZE 1048576 CACHE STRING "Pool size in bytes")
 target_compile_definitions(omem PUBLIC OMEM_POOL_SIZE=${OMEM_POOL_SIZE})
 
