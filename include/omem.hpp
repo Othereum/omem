@@ -77,7 +77,7 @@ namespace omem
 #endif
 			auto* const block = static_cast<Block*>(ptr);
 			const auto idx = static_cast<size_t>(static_cast<char*>(ptr) - static_cast<char*>(blocks_)) / info_.size;
-			if (0 <= idx && idx < info_.count)
+			if (idx < info_.count)
 			{
 				auto* next = next_;
 				next_ = block;
