@@ -19,22 +19,7 @@ namespace omem
 		return cnt + remain;
 	}
 	
-	struct Pools
-	{
-		~Pools()
-		{
-			try { on_dest(pools); }
-			catch (...)
-			{
-				__debugbreak();
-			}
-		}
-		
-		PoolMap pools;
-		std::function<void(const PoolMap&)> on_dest;
-	};
-
-	static Pools pools;
+	static PoolMap pools;
 
 #if OMEM_THREADSAFE
 	static std::mutex pools_mutex;
@@ -50,7 +35,7 @@ namespace omem
 #if OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
 #endif
-		return pools.pools.try_emplace(log, real_size, pool_size/real_size).first->second;
+		return pools.try_emplace(log, real_size, pool_size/real_size).first->second;
 	}
 
 	MemoryPool::MemoryPool(const size_t size, const size_t count)
@@ -67,13 +52,8 @@ namespace omem
 		if (blocks_) operator delete(blocks_);
 	}
 
-	void SetOnPoolDest(std::function<void(const PoolMap&)>&& on_pool_dest) noexcept
-	{
-		pools.on_dest = std::move(on_pool_dest);
-	}
-
 	const PoolMap& GetPools() noexcept
 	{
-		return pools.pools;
+		return pools;
 	}
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include <new>
-#include <functional>
 #include <unordered_map>
 
 #if OMEM_THREADSAFE
@@ -127,14 +126,5 @@ namespace omem
 	}
 
 	using PoolMap = std::unordered_map<size_t, MemoryPool>;
-
-	/**
-	 * \brief Register function to be called when memory pool is destroyed.
-	 * \param on_pool_dest function to be called
-	 * \note CALLING THIS FUNCTION IS NOT THREAD-SAFE
-	 * \note All exceptions thrown from on_pool_dest are swallowed silently.
-	 */
-	OMAPI void SetOnPoolDest(std::function<void(const PoolMap&)>&& on_pool_dest) noexcept;
-
 	[[nodiscard]] OMAPI const PoolMap& GetPools() noexcept;
 }
