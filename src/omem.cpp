@@ -56,14 +56,6 @@ namespace omem
 		next->next = nullptr;
 	}
 
-	MemoryPool::MemoryPool(MemoryPool&& r) noexcept
-		:next_{r.next_}, blocks_{r.blocks_}, info_{r.info_}
-	{
-		r.next_ = nullptr;
-		r.blocks_ = nullptr;
-		info_ = {};
-	}
-
 	MemoryPool::~MemoryPool()
 	{
 		if (blocks_)

@@ -51,7 +51,15 @@ namespace omem
 		OMAPI static MemoryPool& Get(size_t size);
 		
 		MemoryPool(size_t size, size_t count);
-		MemoryPool(MemoryPool&& r) noexcept;
+		
+		MemoryPool(MemoryPool&& r) noexcept
+			:next_{r.next_}, blocks_{r.blocks_}, info_{r.info_}
+		{
+			r.next_ = nullptr;
+			r.blocks_ = nullptr;
+			info_ = {};
+		}
+		
 		~MemoryPool();
 		
 		[[nodiscard]] void* Alloc()
