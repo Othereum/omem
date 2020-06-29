@@ -126,21 +126,15 @@ namespace omem
 		else operator delete(p);
 	}
 
-	/**
-	 * \brief Register function to be called when memory pool is destroyed. Print info to stdout by default.
-	 * \param on_pool_dest function to be called
-	 * \note CALLING THIS FUNCTION IS NOT THREAD-SAFE
-	 * \note All exceptions thrown from on_pool_dest are swallowed silently.
-	 */
-	OMAPI void SetOnPoolDest(const std::function<void(const PoolInfo&)>& on_pool_dest);
-	
-	/**
-	 * \brief Register function to be called when memory pool is destroyed. Print info to stdout by default.
-	 * \param on_pool_dest function to be called
-	 * \note CALLING THIS FUNCTION IS NOT THREAD-SAFE
-	 * \note All exceptions thrown from on_pool_dest are swallowed silently.
-	 */
-	OMAPI void SetOnPoolDest(std::function<void(const PoolInfo&)>&& on_pool_dest) noexcept;
+	using PoolMap = std::unordered_map<size_t, MemoryPool>;
 
-	[[nodiscard]] OMAPI const std::unordered_map<size_t, MemoryPool>& GetPools() noexcept;
+	/**
+	 * \brief Register function to be called when memory pool is destroyed.
+	 * \param on_pool_dest function to be called
+	 * \note CALLING THIS FUNCTION IS NOT THREAD-SAFE
+	 * \note All exceptions thrown from on_pool_dest are swallowed silently.
+	 */
+	OMAPI void SetOnPoolDest(std::function<void(const PoolMap&)>&& on_pool_dest) noexcept;
+
+	[[nodiscard]] OMAPI const PoolMap& GetPools() noexcept;
 }

@@ -19,16 +19,22 @@ namespace omem
 		return cnt + remain;
 	}
 	
-	static void PrintPoolInfo(const PoolInfo& info)
+	struct Pools
 	{
-		std::cout << "[omem] Memory pool with " << info.count << ' ' << info.size << "-byte blocks\n";
-		std::cout << "[omem]  Leaked: " << info.cur << " blocks\n";
-		std::cout << "[omem]  Peak usage: " << info.peak << " blocks\n";
-		std::cout << "[omem]  Block fault: " << info.fault << " times\n";
-	}
-	
-	static std::function<void(const PoolInfo&)> on_pool_dest = &PrintPoolInfo;
-	static std::unordered_map<size_t, MemoryPool> pools;
+		~Pools()
+		{
+			try { on_dest(pools); }
+			catch (...)
+			{
+				__debugbreak();
+			}
+		}
+		
+		PoolMap pools;
+		std::function<void(const PoolMap&)> on_dest;
+	};
+
+	static Pools pools;
 
 #if OMEM_THREADSAFE
 	static std::mutex pools_mutex;
@@ -44,7 +50,7 @@ namespace omem
 #if OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
 #endif
-		return pools.try_emplace(log, real_size, pool_size/real_size).first->second;
+		return pools.pools.try_emplace(log, real_size, pool_size/real_size).first->second;
 	}
 
 	MemoryPool::MemoryPool(const size_t size, const size_t count)
@@ -58,25 +64,16 @@ namespace omem
 
 	MemoryPool::~MemoryPool()
 	{
-		if (blocks_)
-		{
-			operator delete(blocks_);
-			try { on_pool_dest(info_); } catch (...) {}
-		}
+		if (blocks_) operator delete(blocks_);
 	}
 
-	void SetOnPoolDest(const std::function<void(const PoolInfo&)>& callback)
+	void SetOnPoolDest(std::function<void(const PoolMap&)>&& on_pool_dest) noexcept
 	{
-		on_pool_dest = callback;
+		pools.on_dest = std::move(on_pool_dest);
 	}
 
-	void SetOnPoolDest(std::function<void(const PoolInfo&)>&& callback) noexcept
+	const PoolMap& GetPools() noexcept
 	{
-		on_pool_dest = std::move(callback);
-	}
-
-	const std::unordered_map<size_t, MemoryPool>& GetPools() noexcept
-	{
-		return pools;
+		return pools.pools;
 	}
 }
