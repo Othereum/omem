@@ -114,6 +114,16 @@ namespace omem
 #endif
 	};
 
+	[[nodiscard]] inline void* Alloc(size_t size)
+	{
+		return MemoryPool::Get(size).Alloc();
+	}
+
+	inline void Free(void* p, size_t size) noexcept
+	{
+		MemoryPool::Get(size).Free(p);
+	}
+
 	using PoolMap = std::unordered_map<size_t, MemoryPool>;
 	[[nodiscard]] OMAPI const PoolMap& GetPools() noexcept;
 }
