@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <new>
 #include <unordered_map>
 
@@ -66,7 +67,7 @@ namespace omem
 #if OMEM_THREADSAFE
 			std::lock_guard<std::mutex> lock{mutex_};
 #endif
-			if (++info_.cur > info_.peak) info_.peak = info_.cur;
+			info_.peak = std::max(info_.peak, ++info_.cur);
 			if (next_)
 			{
 				auto* ret = next_;
@@ -112,18 +113,6 @@ namespace omem
 		std::mutex mutex_;
 #endif
 	};
-
-	[[nodiscard]] inline void* Alloc(size_t size)
-	{
-		if (size <= OMEM_POOL_SIZE) return MemoryPool::Get(size).Alloc();
-		return operator new(size);
-	}
-
-	inline void Free(void* p, size_t size) noexcept
-	{
-		if (size <= OMEM_POOL_SIZE) MemoryPool::Get(size).Free(p);
-		else operator delete(p);
-	}
 
 	using PoolMap = std::unordered_map<size_t, MemoryPool>;
 	[[nodiscard]] OMAPI const PoolMap& GetPools() noexcept;
