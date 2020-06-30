@@ -1,5 +1,5 @@
 #include "omem.hpp"
-#include <algorithm>
+#include <cassert>
 #include <iostream>
 
 namespace omem
@@ -28,9 +28,8 @@ namespace omem
 	MemoryPool& MemoryPool::Get(size_t size)
 	{
 		constexpr auto pool_size = size_t(1) << LogCeil(OMEM_POOL_SIZE, 2);
-		constexpr auto min_log = LogCeil(sizeof(void*), 2);
-		constexpr auto max_log = LogCeil(pool_size, 2) + 1;
-		const auto log = std::clamp(LogCeil(size, 2), min_log, max_log);
+		constexpr auto min_log = LogCeil(sizeof(Block), 2);
+		const auto log = std::max(LogCeil(size, 2), min_log);
 		const auto real_size = size_t(1) << log;
 #if OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
@@ -39,11 +38,19 @@ namespace omem
 	}
 
 	MemoryPool::MemoryPool(const size_t size, const size_t count)
-		:blocks_{operator new(size * count)}, info_{size, count}
+		:next_{nullptr}, blocks_{nullptr}, info_{size, count}
 	{
+		assert(size >= sizeof(Block));
+		if (count == 0) return;
+
+		blocks_ = operator new(size * count);
+		
 		auto* it = static_cast<char*>(blocks_);
 		auto* next = next_ = static_cast<Block*>(blocks_);
-		for (size_t i=1; i<count; ++i) next = next->next = reinterpret_cast<Block*>(it += size);
+		
+		for (size_t i=1; i<count; ++i)
+			next = next->next = reinterpret_cast<Block*>(it += size);
+		
 		next->next = nullptr;
 	}
 
