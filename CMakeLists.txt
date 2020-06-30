@@ -19,7 +19,7 @@ target_compile_options(omem PRIVATE
 )
 
 set(OMEM_POOL_SIZE 1048576 CACHE STRING "Pool size in bytes")
-target_compile_definitions(omem PUBLIC OMEM_POOL_SIZE=${OMEM_POOL_SIZE})
+target_compile_definitions(omem PRIVATE OMEM_POOL_SIZE=${OMEM_POOL_SIZE})
 
 set(OMEM_THREADSAFE 0 CACHE STRING "")
 target_compile_definitions(omem PUBLIC OMEM_THREADSAFE=${OMEM_THREADSAFE})
