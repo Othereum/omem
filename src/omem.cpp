@@ -21,7 +21,7 @@ namespace omem
 	
 	static PoolMap pools;
 
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 	static std::mutex pools_mutex;
 #endif
 
@@ -31,7 +31,7 @@ namespace omem
 		constexpr auto min_log = LogCeil(sizeof(Block), 2);
 		const auto log = std::max(LogCeil(size, 2), min_log);
 		const auto real_size = size_t(1) << log;
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 		std::lock_guard<std::mutex> lock{pools_mutex};
 #endif
 		return pools.try_emplace(log, real_size, pool_size/real_size).first->second;

@@ -3,15 +3,15 @@
 #include <new>
 #include <unordered_map>
 
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 #include <mutex>
 #endif
 
-#if OMEM_BUILD_STATIC
+#ifdef OMEM_BUILD_STATIC
 	#define OMAPI
 #else
 	#ifdef _WIN32
-		#if OMEM_BUILD
+		#ifdef OMEM_BUILD
 			#define OMAPI __declspec(dllexport)
 		#else
 			#define OMAPI __declspec(dllimport)
@@ -64,7 +64,7 @@ namespace omem
 		
 		[[nodiscard]] void* Alloc()
 		{
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 			std::lock_guard<std::mutex> lock{mutex_};
 #endif
 			info_.peak = std::max(info_.peak, ++info_.cur);
@@ -80,7 +80,7 @@ namespace omem
 
 		void Free(void* ptr) noexcept
 		{
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 			std::lock_guard<std::mutex> lock{mutex_};
 #endif
 			auto* const block = static_cast<Block*>(ptr);
@@ -109,7 +109,7 @@ namespace omem
 		void* blocks_;
 		PoolInfo info_;
 		
-#if OMEM_THREADSAFE
+#ifdef OMEM_THREADSAFE
 		std::mutex mutex_;
 #endif
 	};
