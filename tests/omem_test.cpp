@@ -23,15 +23,18 @@ TEST(omem, omem)
 	public:
 		using value_type = double;
 		
-		double* allocate(size_t)
+		double* allocate(size_t n)
 		{
-			return static_cast<double*>(omem::MemoryPool::Get(sizeof(double)).Alloc());
+			return static_cast<double*>(pool_.Alloc(sizeof(double) * n));
 		}
 
-		void deallocate(double* p, size_t)
+		void deallocate(double* p, size_t n)
 		{
-			omem::MemoryPool::Get(sizeof(double)).Free(p);
+			pool_.Free(p, sizeof(double) * n);
 		}
+
+	private:
+		omem::MemoryPoolManager pool_;
 	};
 	
 	Benchmark(Allocator{});

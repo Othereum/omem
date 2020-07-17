@@ -1,11 +1,8 @@
 #pragma once
 #include <algorithm>
+#include <cassert>
 #include <new>
 #include <unordered_map>
-
-#ifdef OMEM_THREADSAFE
-#include <mutex>
-#endif
 
 #ifdef OMEM_BUILD_STATIC
 	#define OMAPI
@@ -29,6 +26,21 @@
 
 namespace omem
 {
+	template <class T1, class T2>
+	[[nodiscard]] constexpr T1 LogCeil(T1 x, T2 base) noexcept
+	{
+		T1 cnt = 0;
+		auto remain = false;
+
+		for (T1 result{}; (result = x/base) > 0; ++cnt)
+		{
+			remain = remain || x%base;
+			x = result;
+		}
+
+		return cnt + remain;
+	}
+	
 	struct PoolInfo
 	{
 		constexpr PoolInfo() noexcept = default;
@@ -48,9 +60,22 @@ namespace omem
 	class MemoryPool
 	{
 	public:
-		OMAPI static MemoryPool& Get(size_t size);
-		
-		MemoryPool(size_t size, size_t count);
+		MemoryPool(size_t size, size_t count)
+			:next_{nullptr}, blocks_{nullptr}, info_{size, count}
+		{
+			assert(size >= sizeof(Block));
+			if (count == 0) return;
+
+			blocks_ = operator new(size * count);
+			
+			auto* it = static_cast<char*>(blocks_);
+			auto* next = next_ = static_cast<Block*>(blocks_);
+			
+			for (size_t i=1; i<count; ++i)
+				next = next->next = reinterpret_cast<Block*>(it += size);
+			
+			next->next = nullptr;
+		}
 		
 		MemoryPool(MemoryPool&& r) noexcept
 			:next_{r.next_}, blocks_{r.blocks_}, info_{r.info_}
@@ -60,13 +85,13 @@ namespace omem
 			info_ = {};
 		}
 		
-		~MemoryPool();
-		
+		~MemoryPool()
+		{
+			if (blocks_) operator delete(blocks_);
+		}
+
 		[[nodiscard]] void* Alloc()
 		{
-#ifdef OMEM_THREADSAFE
-			std::lock_guard<std::mutex> lock{mutex_};
-#endif
 			info_.peak = std::max(info_.peak, ++info_.cur);
 			if (next_)
 			{
@@ -80,9 +105,6 @@ namespace omem
 
 		void Free(void* ptr) noexcept
 		{
-#ifdef OMEM_THREADSAFE
-			std::lock_guard<std::mutex> lock{mutex_};
-#endif
 			auto* const block = static_cast<Block*>(ptr);
 			const auto diff = static_cast<char*>(ptr) - static_cast<char*>(blocks_);
 			if (static_cast<size_t>(diff) < info_.count * info_.size)
@@ -108,22 +130,61 @@ namespace omem
 		struct Block { Block* next; } *next_;
 		void* blocks_;
 		PoolInfo info_;
-		
-#ifdef OMEM_THREADSAFE
-		std::mutex mutex_;
-#endif
 	};
 
-	[[nodiscard]] inline void* Alloc(size_t size)
+	class MemoryPoolManager
 	{
-		return MemoryPool::Get(size).Alloc();
-	}
+	public:
+		template <class T, class... Args>
+		[[nodiscard]] T* New(Args&&... args)
+		{
+			auto* const p = Alloc(sizeof(T));
+			try { return new (p) T{std::forward<Args>(args)...}; }
+			catch (...) { Free(p, sizeof(T)); throw; }
+		}
 
-	inline void Free(void* p, size_t size) noexcept
-	{
-		MemoryPool::Get(size).Free(p);
-	}
+		template <class T, class... Args>
+		[[nodiscard]] T* NewArr(size_t n, Args&&... args)
+		{
+			const auto p = Alloc(n * sizeof(T));
+			try { return new (p) T[n]{std::forward<Args>(args)...}; }
+			catch (...) { Free(p, n * sizeof(T)); throw; }
+		}
 
-	using PoolMap = std::unordered_map<size_t, MemoryPool>;
-	[[nodiscard]] OMAPI const PoolMap& GetPools() noexcept;
+		template <class T>
+		void Delete(T* p) noexcept
+		{
+			p->~T();
+			Free(p, sizeof(T));
+		}
+
+		template <class T>
+		void DeleteArr(T* p, size_t n) noexcept
+		{
+			for (size_t i=0; i<n; ++i) p[i].~T();
+			Free(p, n * sizeof(T));
+		}
+
+		[[nodiscard]] void* Alloc(size_t size)
+		{
+			return Get(size).Alloc();
+		}
+
+		void Free(void* p, size_t size) noexcept
+		{
+			Get(size).Free(p);
+		}
+		
+		MemoryPool& Get(size_t size)
+		{
+			constexpr auto pool_size = size_t(1) << LogCeil(OMEM_POOL_SIZE, 2);
+			constexpr auto min_log = LogCeil(sizeof(void*), 2);
+			const auto log = std::max(LogCeil(size, 2), min_log);
+			const auto real_size = size_t(1) << log;
+			return pools_.try_emplace(log, real_size, pool_size/real_size).first->second;
+		}
+
+	private:
+		std::unordered_map<size_t, MemoryPool> pools_;
+	};
 }
