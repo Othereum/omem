@@ -4,26 +4,6 @@
 #include <new>
 #include <unordered_map>
 
-#ifdef OMEM_BUILD_STATIC
-	#define OMAPI
-#else
-	#ifdef _WIN32
-		#ifdef OMEM_BUILD
-			#define OMAPI __declspec(dllexport)
-		#else
-			#define OMAPI __declspec(dllimport)
-		#endif
-	#else
-		#if defined(__GNUC__) && __GNUC__>=4
-			#define OMAPI __attribute__ ((visibility("default")))
-		#elif defined(__SUNPRO_C) || defined(__SUNPRO_CC)
-			#define OMAPI __global
-		#else
-			#define OMAPI
-		#endif
-	#endif
-#endif
-
 namespace omem
 {
 	template <class T1, class T2>
