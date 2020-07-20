@@ -70,6 +70,15 @@ namespace omem
 			if (blocks_) operator delete(blocks_);
 		}
 
+		MemoryPool& operator=(MemoryPool&& r) noexcept
+		{
+			MemoryPool{std::move(r)}.swap(*this);
+			return *this;
+		}
+
+		MemoryPool(const MemoryPool&) = delete;
+		MemoryPool& operator=(const MemoryPool&) = delete;
+
 		[[nodiscard]] void* Alloc()
 		{
 			info_.peak = std::max(info_.peak, ++info_.cur);
@@ -102,9 +111,13 @@ namespace omem
 		
 		[[nodiscard]] const PoolInfo& GetInfo() const noexcept { return info_; }
 
-		MemoryPool(const MemoryPool&) = delete;
-		MemoryPool& operator=(const MemoryPool&) = delete;
-		MemoryPool& operator=(MemoryPool&&) = delete;
+		void swap(MemoryPool& r) noexcept
+		{
+			using std::swap;
+			swap(next_, r.next_);
+			swap(blocks_, r.blocks_);
+			swap(info_, r.info_);
+		}
 
 	private:
 		struct Block { Block* next; } *next_;
