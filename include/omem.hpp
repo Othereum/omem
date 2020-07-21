@@ -177,6 +177,8 @@ namespace omem
 			return pools_.try_emplace(log, real_size, pool_size/real_size).first->second;
 		}
 
+		[[nodiscard]] auto& Pools() const noexcept { return pools_; }
+
 	private:
 		std::unordered_map<size_t, MemoryPool> pools_;
 	};
